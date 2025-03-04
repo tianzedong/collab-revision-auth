@@ -8,7 +8,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState(''); // Add name state
+  const [name, setName] = useState('');
   const [orgId, setOrgId] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
 
@@ -16,38 +16,66 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     
+    // Validate orgId is not empty
+    if (!orgId.trim()) {
+      alert('Please enter an Organization ID');
+      setLoading(false);
+      return;
+    }
+    
     try {
-      // Include name in user metadata
+      // Step 1: Create the user account with metadata
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: name // Store name in user metadata
+            full_name: name,
+            org_id: orgId.trim()
           }
         }
       });
       
       if (error) {
-        alert(error.message);
+        console.error("Sign-up error:", error);
+        alert(`Sign-up error: ${error.message}`);
+        setLoading(false);
         return;
       }
       
-      // If signup successful, add user to organization
-      if (data.user) {
-        const { error: orgError } = await supabase
-          .from('user_organizations')
-          .insert([{ user_id: data.user.id, org_id: orgId }]);
-        
-        if (orgError) {
-          alert(`Signup successful but failed to set organization: ${orgError.message}`);
-        } else {
-          alert('Signup successful! Please check your email for verification.');
-        }
+      if (!data.user) {
+        alert("Sign-up failed: No user was created");
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error signing up:', error);
-      alert('An error occurred during signup.');
+      
+      // Step 2: Immediately create profile entry
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: data.user.id,
+          full_name: name,
+          org_id: orgId.trim()
+        }]);
+        
+      if (profileError) {
+        console.error("Error creating profile:", profileError);
+        // Don't block signup success, but log the error
+      }
+      
+      console.log("User created with profile:", {
+        userId: data.user.id,
+        orgId: orgId.trim(),
+        name: name
+      });
+      
+      alert('Sign-up successful! You can now sign in.');
+      
+      // Switch to sign-in mode
+      setMode('signin');
+    } catch (error: any) {
+      console.error('Error during sign-up:', error);
+      alert(`An error occurred during sign-up: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -65,10 +93,47 @@ export default function Auth() {
       
       if (error) {
         alert(error.message);
+        setLoading(false);
+        return;
       }
-    } catch (error) {
+      
+      // If sign-in successful, ensure user has a profile
+      if (data.user) {
+        console.log("User signed in:", data.user);
+        
+        // Get org_id from metadata
+        const orgId = data.user.user_metadata?.org_id;
+        const fullName = data.user.user_metadata?.full_name || '';
+        
+        if (orgId) {
+          // Check if user already has a profile
+          const { data: profileData, error: profileCheckError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profileCheckError) {
+            // User doesn't have a profile yet, create one
+            console.log("Creating profile for user with org_id:", orgId);
+            
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert([{ 
+                id: data.user.id, 
+                full_name: fullName,
+                org_id: orgId
+              }]);
+              
+            if (insertError) {
+              console.error("Error creating profile on sign-in:", insertError);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
       console.error('Error signing in:', error);
-      alert('An error occurred during sign in.');
+      alert(`An error occurred during sign-in: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -111,7 +176,6 @@ export default function Auth() {
         
         {mode === 'signup' && (
           <>
-            {/* Add name field for signup */}
             <div className="mb-4">
               <label className="block text-gray-700 mb-2" htmlFor="name">
                 Your Name
