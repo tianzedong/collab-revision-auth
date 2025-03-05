@@ -1,9 +1,17 @@
-// src/components/revisions/RevisionHistory.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Revision } from '@/types';
+
+// Custom hook to detect client-side rendering
+function useHasMounted() {
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+  return hasMounted;
+}
 
 interface RevisionHistoryProps {
   documentId: string;
@@ -11,7 +19,7 @@ interface RevisionHistoryProps {
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
-  let bgColor, textColor, icon;
+  let bgColor = '', textColor = '', icon = null;
   
   switch (status) {
     case 'approved':
@@ -59,36 +67,55 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const RevisionCard = ({ revision, userName, isNew }: { revision: Revision, userName: string, isNew?: boolean }) => (
-  <div className={`p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-300 ${isNew ? 'animate-slide-in' : ''}`}>
-    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3">
-      <div className="mb-2 sm:mb-0">
-        <StatusBadge status={revision.status} />
+// Client-side only revision card
+const RevisionCard = ({ revision, userName, isNew }: { revision: Revision, userName: string, isNew?: boolean }) => {
+  const hasMounted = useHasMounted();
+  
+  // Return a skeleton during SSR to prevent hydration mismatch
+  if (!hasMounted) {
+    return (
+      <div className="p-4 border rounded-lg bg-white shadow-sm">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-3"></div>
+          <div className="h-8 bg-gray-200 rounded w-3/4 mb-3"></div>
+          <div className="h-24 bg-gray-200 rounded"></div>
+        </div>
       </div>
-      <div className="flex items-center text-sm text-gray-500">
-        <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-        </svg>
-        {new Date(revision.created_at || '').toLocaleString()}
+    );
+  }
+  
+  // Client-side rendering with dynamic content
+  return (
+    <div className={`p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-300 ${isNew ? 'animate-slide-in' : ''}`}>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3">
+        <div className="mb-2 sm:mb-0">
+          <StatusBadge status={revision.status} />
+        </div>
+        <div className="flex items-center text-sm text-gray-500">
+          <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+          {new Date(revision.created_at || '').toLocaleString()}
+        </div>
       </div>
+      
+      <div className="flex items-center mb-3">
+        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold mr-2">
+          {userName && userName.charAt(0).toUpperCase()}
+        </div>
+        <div className="text-sm font-medium text-gray-800">
+          {userName || 'Unknown User'}
+        </div>
+      </div>
+      
+      {revision.comments && (
+        <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
+          <p className="text-gray-800 whitespace-pre-line">{revision.comments}</p>
+        </div>
+      )}
     </div>
-    
-    <div className="flex items-center mb-3">
-      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold mr-2">
-        {userName && userName.charAt(0).toUpperCase()}
-      </div>
-      <div className="text-sm font-medium text-gray-800">
-        {userName || 'Unknown User'}
-      </div>
-    </div>
-    
-    {revision.comments && (
-      <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
-        <p className="text-gray-800 whitespace-pre-line">{revision.comments}</p>
-      </div>
-    )}
-  </div>
-);
+  );
+};
 
 const LoadingState = () => (
   <div className="flex items-center justify-center h-48">
@@ -100,7 +127,7 @@ const LoadingState = () => (
 );
 
 const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-gray-50 text-center animate-fade-in">
+  <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-gray-50 text-center">
     <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
@@ -110,13 +137,15 @@ const EmptyState = () => (
 );
 
 export default function RevisionHistory({ documentId, session }: RevisionHistoryProps) {
+  const hasMounted = useHasMounted();
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [loading, setLoading] = useState(true);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [newRevisionIds, setNewRevisionIds] = useState<Set<string>>(new Set());
   
+  // Only run after client-side hydration
   useEffect(() => {
-    if (!session?.user) return;
+    if (!session?.user || !hasMounted) return;
     
     fetchRevisions();
     
@@ -139,7 +168,18 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [documentId, session]);
+  }, [documentId, session, hasMounted]);
+  
+  // Handle "new" revision animation with useEffect
+  useEffect(() => {
+    if (newRevisionIds.size > 0 && hasMounted) {
+      const timer = setTimeout(() => {
+        setNewRevisionIds(new Set());
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [newRevisionIds, hasMounted]);
   
   const fetchRevisions = async () => {
     setLoading(true);
@@ -147,7 +187,7 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
     // Remember current revisions to compare later
     const currentRevisionIds = new Set(revisions.map(rev => rev.id));
     
-    // Fetch revisions for this document WITHOUT trying to join with profiles
+    // Fetch revisions for this document
     const { data, error } = await supabase
       .from('revisions')
       .select('*')
@@ -171,13 +211,6 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
       
       setNewRevisionIds(newIds);
       setRevisions(data);
-      
-      // Clear "new" status after a few seconds
-      if (newIds.size > 0) {
-        setTimeout(() => {
-          setNewRevisionIds(new Set());
-        }, 3000);
-      }
       
       // Fetch user names separately
       if (data.length > 0) {
@@ -211,6 +244,29 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
     setLoading(false);
   };
   
+  // Show skeleton loading state during SSR and initial loading
+  if (!hasMounted) {
+    return (
+      <div className="p-6 border rounded-lg mt-6 bg-white shadow-sm">
+        <div className="flex justify-between items-center mb-5">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-6 bg-gray-200 rounded w-1/6"></div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2].map(i => (
+            <div key={i} className="p-4 border rounded-lg bg-white">
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded w-1/4 mb-3"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4 mb-3"></div>
+                <div className="h-24 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
   if (loading) {
     return <LoadingState />;
   }
@@ -229,7 +285,7 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
       </div>
       <div className="space-y-4">
         {revisions.map((revision, index) => (
-          <div key={revision.id} style={{ animationDelay: `${index * 50}ms` }}>
+          <div key={revision.id}>
             <RevisionCard 
               revision={revision} 
               userName={userNames[revision.reviewer_id] || 'Unknown User'} 
