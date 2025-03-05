@@ -59,8 +59,8 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const RevisionCard = ({ revision, userName }: { revision: Revision, userName: string }) => (
-  <div className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+const RevisionCard = ({ revision, userName, isNew }: { revision: Revision, userName: string, isNew?: boolean }) => (
+  <div className={`p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-300 ${isNew ? 'animate-slide-in' : ''}`}>
     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3">
       <div className="mb-2 sm:mb-0">
         <StatusBadge status={revision.status} />
@@ -100,7 +100,7 @@ const LoadingState = () => (
 );
 
 const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-gray-50 text-center">
+  <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-gray-50 text-center animate-fade-in">
     <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
@@ -113,6 +113,7 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [loading, setLoading] = useState(true);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [newRevisionIds, setNewRevisionIds] = useState<Set<string>>(new Set());
   
   useEffect(() => {
     if (!session?.user) return;
@@ -142,6 +143,9 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
   
   const fetchRevisions = async () => {
     setLoading(true);
+
+    // Remember current revisions to compare later
+    const currentRevisionIds = new Set(revisions.map(rev => rev.id));
     
     // Fetch revisions for this document WITHOUT trying to join with profiles
     const { data, error } = await supabase
@@ -156,34 +160,52 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
       return;
     }
     
-    setRevisions(data || []);
-    
-    // Fetch user names separately
-    if (data && data.length > 0) {
-      // Get unique reviewer IDs
-      const reviewerIds = [...new Set(data.map(rev => rev.reviewer_id))];
-      
-      // Fetch profiles one by one
-      const names: Record<string, string> = {};
-      
-      for (const reviewerId of reviewerIds) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', reviewerId)
-          .single();
-          
-        if (!profileError && profileData) {
-          names[reviewerId] = profileData.full_name;
-        } else {
-          // Fallback to showing user ID or email
-          names[reviewerId] = reviewerId === session.user.id 
-            ? (session.user.user_metadata?.full_name || session.user.email || 'You')
-            : 'Unknown User';
+    if (data) {
+      // Identify new revisions
+      const newIds = new Set<string>();
+      data.forEach(revision => {
+        if (!currentRevisionIds.has(revision.id)) {
+          newIds.add(revision.id);
         }
+      });
+      
+      setNewRevisionIds(newIds);
+      setRevisions(data);
+      
+      // Clear "new" status after a few seconds
+      if (newIds.size > 0) {
+        setTimeout(() => {
+          setNewRevisionIds(new Set());
+        }, 3000);
       }
       
-      setUserNames(names);
+      // Fetch user names separately
+      if (data.length > 0) {
+        // Get unique reviewer IDs
+        const reviewerIds = [...new Set(data.map(rev => rev.reviewer_id))];
+        
+        // Fetch profiles one by one
+        const names: Record<string, string> = {};
+        
+        for (const reviewerId of reviewerIds) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', reviewerId)
+            .single();
+            
+          if (!profileError && profileData) {
+            names[reviewerId] = profileData.full_name;
+          } else {
+            // Fallback to showing user ID or email
+            names[reviewerId] = reviewerId === session.user.id 
+              ? (session.user.user_metadata?.full_name || session.user.email || 'You')
+              : 'Unknown User';
+          }
+        }
+        
+        setUserNames(names);
+      }
     }
     
     setLoading(false);
@@ -206,12 +228,14 @@ export default function RevisionHistory({ documentId, session }: RevisionHistory
         </span>
       </div>
       <div className="space-y-4">
-        {revisions.map((revision) => (
-          <RevisionCard 
-            key={revision.id} 
-            revision={revision} 
-            userName={userNames[revision.reviewer_id] || 'Unknown User'} 
-          />
+        {revisions.map((revision, index) => (
+          <div key={revision.id} style={{ animationDelay: `${index * 50}ms` }}>
+            <RevisionCard 
+              revision={revision} 
+              userName={userNames[revision.reviewer_id] || 'Unknown User'} 
+              isNew={newRevisionIds.has(revision.id)}
+            />
+          </div>
         ))}
       </div>
     </div>

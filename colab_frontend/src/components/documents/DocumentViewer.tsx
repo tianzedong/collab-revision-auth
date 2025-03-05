@@ -25,23 +25,25 @@ const LoadingState = () => (
 );
 
 const DocumentItem = ({ doc, isSelected, onClick }: DocumentItemProps) => (
-  <div 
-    className={`p-4 border rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 ${
-      isSelected ? 'bg-blue-50 border-blue-500 shadow-sm' : 'hover:bg-gray-50'
-    }`}
-    onClick={onClick}
-  >
-    <h3 className="font-medium text-gray-900 mb-1 truncate">{doc.title}</h3>
-    <div className="flex justify-between items-center text-xs text-gray-500">
-      <span>
-        {new Date(doc.created_at || '').toLocaleDateString()}
-      </span>
-      <span className="px-2 py-1 bg-gray-100 rounded-full">
-        {doc.content.length < 100 ? 'Short' : doc.content.length < 500 ? 'Medium' : 'Long'}
-      </span>
+    <div 
+      className={`p-4 border rounded-lg cursor-pointer transition-all duration-300 ${
+        isSelected 
+          ? 'bg-blue-50 border-blue-500 shadow-sm animate-highlight' 
+          : 'hover:bg-gray-50 hover:shadow-sm'
+      }`}
+      onClick={onClick}
+    >
+      <h3 className="font-medium text-gray-900 mb-1 truncate">{doc.title}</h3>
+      <div className="flex justify-between items-center text-xs text-gray-500">
+        <span>
+          {new Date(doc.created_at || '').toLocaleDateString()}
+        </span>
+        <span className="px-2 py-1 bg-gray-100 rounded-full">
+          {doc.content.length < 100 ? 'Short' : doc.content.length < 500 ? 'Medium' : 'Long'}
+        </span>
+      </div>
     </div>
-  </div>
-);
+  );
 
 const EmptyState = ({ onCreateNew }: { onCreateNew: () => void }) => (
   <div className="flex flex-col items-center justify-center h-64 p-8 border-2 border-dashed rounded-lg border-gray-300 bg-gray-50">
@@ -273,30 +275,30 @@ export default function DocumentViewer({ onDocumentSelect, session }: DocumentVi
         </div>
         
         {documents.length === 0 ? (
-          <EmptyState onCreateNew={createNewDocument} />
+        <EmptyState onCreateNew={createNewDocument} />
         ) : (
-          <div className="space-y-3 mb-4">
+        <div className="space-y-3 mb-4">
             {documents.map(doc => (
-              <DocumentItem 
+            <DocumentItem 
                 key={doc.id}
                 doc={doc}
                 isSelected={selectedDocument?.id === doc.id}
                 onClick={() => handleDocumentSelect(doc)}
-              />
+            />
             ))}
-          </div>
+        </div>
         )}
-        
+
         {documents.length > 0 && (
-          <button 
+        <button 
             className="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center justify-center"
             onClick={createNewDocument}
-          >
+        >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
             </svg>
             Create New Document
-          </button>
+        </button>
         )}
       </div>
       
