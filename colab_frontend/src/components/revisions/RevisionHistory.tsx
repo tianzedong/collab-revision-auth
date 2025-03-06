@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Revision } from '@/types';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Section from '@/components/ui/Section';
+import Avatar from '@/components/ui/Avatar';
 
 // Custom hook to detect client-side rendering
 function useHasMounted() {
@@ -53,9 +54,7 @@ const RevisionCard = ({ revision, userName, isNew }: { revision: Revision, userN
       </div>
       
       <div className="flex items-center mb-3">
-        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold mr-2">
-          {userName && userName.charAt(0).toUpperCase()}
-        </div>
+        <Avatar name={userName} size="sm" className="mr-2" />
         <div className="text-sm font-medium text-gray-800">
           {userName || 'Unknown User'}
         </div>

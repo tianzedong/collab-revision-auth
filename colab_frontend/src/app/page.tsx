@@ -1,4 +1,3 @@
-// src/app/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,6 +6,7 @@ import Auth from '@/components/auth/Auth';
 import DocumentViewer from '@/components/documents/DocumentViewer';
 import RevisionStatusForm from '@/components/revisions/RevisionStatusForm';
 import RevisionHistory from '@/components/revisions/RevisionHistory';
+import Avatar from '@/components/ui/Avatar';
 
 // Updated UserSessionBar component for page.tsx
 const UserSessionBar = ({ session, handleSignOut }: { session: any, handleSignOut: () => void }) => {
@@ -40,9 +40,10 @@ const UserSessionBar = ({ session, handleSignOut }: { session: any, handleSignOu
     <div className="mb-8 p-4 border rounded-lg bg-white shadow-sm">
       <div className="flex flex-col sm:flex-row justify-between items-center">
         <div className="flex items-center mb-4 sm:mb-0">
-          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold mr-3">
-            {session.user.user_metadata?.full_name?.charAt(0) || session.user.email?.charAt(0) || 'U'}
-          </div>
+          <Avatar 
+            name={session.user.user_metadata?.full_name || session.user.email || 'User'} 
+            className="mr-3"
+          />
           <div>
             <p className="font-medium text-gray-900">
               {session.user.user_metadata?.full_name || session.user.email}
