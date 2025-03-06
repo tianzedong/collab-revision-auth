@@ -1,3 +1,4 @@
+// src/app/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,14 +8,15 @@ import DocumentViewer from '@/components/documents/DocumentViewer';
 import RevisionStatusForm from '@/components/revisions/RevisionStatusForm';
 import RevisionHistory from '@/components/revisions/RevisionHistory';
 import Avatar from '@/components/ui/Avatar';
+import SignOutButton from '@/components/auth/SignOutButton';
 
 // Updated UserSessionBar component for page.tsx
-const UserSessionBar = ({ session, handleSignOut }: { session: any, handleSignOut: () => void }) => {
+const UserSessionBar = ({ session }: { session: any }) => {
   const [orgId, setOrgId] = useState<string>('Unknown Org');
   
   useEffect(() => {
     // Get organization from profiles table (primary source)
-    const fetchUserOrg = async () => {
+    const fetchUserProfile = async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('org_id')
@@ -33,7 +35,7 @@ const UserSessionBar = ({ session, handleSignOut }: { session: any, handleSignOu
       }
     };
     
-    fetchUserOrg();
+    fetchUserProfile();
   }, [session]);
 
   return (
@@ -53,15 +55,7 @@ const UserSessionBar = ({ session, handleSignOut }: { session: any, handleSignOu
             </p>
           </div>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        >
-          <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          Sign Out
-        </button>
+        <SignOutButton />
       </div>
     </div>
   );
@@ -102,14 +96,6 @@ export default function Home() {
     setRevisionKey(prev => prev + 1);
   };
 
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -130,7 +116,7 @@ export default function Home() {
           <Auth />
         ) : (
           <div>
-            <UserSessionBar session={session} handleSignOut={handleSignOut} />
+            <UserSessionBar session={session} />
             
             <DocumentViewer 
               session={session} 
