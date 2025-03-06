@@ -1,158 +1,29 @@
 // src/components/auth/Auth.tsx
 'use client';
 
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import AuthHeader from './AuthHeader';
 
-
 export default function Auth() {
-  const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [orgId, setOrgId] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Validate orgId is not empty
-    if (!orgId.trim()) {
-      alert('Please enter an Organization ID');
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      // Step 1: Create the user account with metadata
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            org_id: orgId.trim()
-          }
-        }
-      });
-      
-      if (error) {
-        console.error("Sign-up error:", error);
-        alert(`Sign-up error: ${error.message}`);
-        setLoading(false);
-        return;
-      }
-      
-      if (!data.user) {
-        alert("Sign-up failed: No user was created");
-        setLoading(false);
-        return;
-      }
-      
-      // Step 2: Immediately create profile entry
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          id: data.user.id,
-          full_name: name,
-          org_id: orgId.trim()
-        }]);
-        
-      if (profileError) {
-        console.error("Error creating profile:", profileError);
-        // Don't block signup success, but log the error
-      }
-      
-      console.log("User created with profile:", {
-        userId: data.user.id,
-        orgId: orgId.trim(),
-        name: name
-      });
-      
-      alert('Sign-up successful! You can now sign in.');
-      
-      // Switch to sign-in mode
-      setMode('signin');
-    } catch (error: any) {
-      console.error('Error during sign-up:', error);
-      alert(`An error occurred during sign-up: ${error.message || 'Unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        alert(error.message);
-        setLoading(false);
-        return;
-      }
-      
-      // If sign-in successful, ensure user has a profile
-      if (data.user) {
-        console.log("User signed in:", data.user);
-        
-        // Get org_id from metadata
-        const orgId = data.user.user_metadata?.org_id;
-        const fullName = data.user.user_metadata?.full_name || '';
-        
-        if (orgId) {
-          // Check if user already has a profile
-          const { data: profileData, error: profileCheckError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-            
-          if (profileCheckError) {
-            // User doesn't have a profile yet, create one
-            console.log("Creating profile for user with org_id:", orgId);
-            
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert([{ 
-                id: data.user.id, 
-                full_name: fullName,
-                org_id: orgId
-              }]);
-              
-            if (insertError) {
-              console.error("Error creating profile on sign-in:", insertError);
-            }
-          }
-        }
-      }
-    } catch (error: any) {
-      console.error('Error signing in:', error);
-      alert(`An error occurred during sign-in: ${error.message || 'Unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const AuthHeader = () => (
-    <div className="text-center mb-8">
-      <div className="inline-block p-4 rounded-full bg-blue-100 mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-        </svg>
-      </div>
-      <h1 className="text-3xl font-bold text-gray-900">Collaborative Revision</h1>
-      <p className="text-gray-600 mt-2">Work together on documents in real-time</p>
-    </div>
-  );
-
+  const { mode, switchMode, signUpProps, signInProps } = useAuth();
+  
+  const {
+    loading,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    handleSignIn
+  } = signInProps;
+  
+  const {
+    name,
+    setName,
+    orgId,
+    setOrgId,
+    handleSignUp
+  } = signUpProps;
+  
   return (
     <div className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg border border-gray-200">
       <AuthHeader />
@@ -248,7 +119,7 @@ export default function Auth() {
             Don't have an account?{' '}
             <button
               className="text-blue-600 font-medium hover:text-blue-800 transition-colors"
-              onClick={() => setMode('signup')}
+              onClick={() => switchMode('signup')}
             >
               Sign Up
             </button>
@@ -258,7 +129,7 @@ export default function Auth() {
             Already have an account?{' '}
             <button
               className="text-blue-600 font-medium hover:text-blue-800 transition-colors"
-              onClick={() => setMode('signin')}
+              onClick={() => switchMode('signin')}
             >
               Sign In
             </button>
@@ -266,4 +137,5 @@ export default function Auth() {
         )}
       </div>
     </div>
-  );}
+  );
+}
