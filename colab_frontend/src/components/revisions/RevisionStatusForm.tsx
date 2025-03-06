@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/ToastContext';
-import StatusOption from '@/components/ui/StatusOption'; // Import the new component
+import StatusOptionsGrid from './StatusOptionsGrid';
 
 interface RevisionStatusFormProps {
   documentId: string;
@@ -106,36 +106,10 @@ export default function RevisionStatusForm({ documentId, session, onRevisionAdde
       <form onSubmit={handleSubmit}>
         <div className="mb-5">
           <label className="block text-sm font-medium mb-3 text-gray-800">Status</label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <StatusOption 
-              value="pending" 
-              label="Pending" 
-              color="yellow"
-              selected={status === 'pending'} 
-              onChange={() => setStatus('pending')} 
-            />
-            <StatusOption 
-              value="reviewing" 
-              label="In Review" 
-              color="blue"
-              selected={status === 'reviewing'} 
-              onChange={() => setStatus('reviewing')} 
-            />
-            <StatusOption 
-              value="approved" 
-              label="Approved" 
-              color="green"
-              selected={status === 'approved'} 
-              onChange={() => setStatus('approved')} 
-            />
-            <StatusOption 
-              value="rejected" 
-              label="Rejected" 
-              color="red"
-              selected={status === 'rejected'} 
-              onChange={() => setStatus('rejected')} 
-            />
-          </div>
+          <StatusOptionsGrid 
+            selectedStatus={status} 
+            onStatusChange={setStatus} 
+          />
         </div>
         
         <div className="mb-5">

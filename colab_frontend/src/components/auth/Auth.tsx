@@ -3,6 +3,8 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import AuthHeader from './AuthHeader';
+
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
