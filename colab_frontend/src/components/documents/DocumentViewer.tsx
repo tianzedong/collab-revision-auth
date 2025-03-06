@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Document } from '@/types';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 
 interface DocumentViewerProps {
   onDocumentSelect?: (documentId: string) => void;
@@ -17,33 +20,27 @@ interface DocumentItemProps {
 
 const LoadingState = () => (
   <div className="flex items-center justify-center h-64">
-    <div className="flex flex-col items-center space-y-4">
-      <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-      <p className="text-gray-700 font-medium">Loading documents...</p>
-    </div>
+    <LoadingSpinner size="lg" text="Loading documents..." />
   </div>
 );
 
 const DocumentItem = ({ doc, isSelected, onClick }: DocumentItemProps) => (
-    <div 
-      className={`p-4 border rounded-lg cursor-pointer transition-all duration-300 ${
-        isSelected 
-          ? 'bg-blue-50 border-blue-500 shadow-sm animate-highlight' 
-          : 'hover:bg-gray-50 hover:shadow-sm'
-      }`}
-      onClick={onClick}
-    >
-      <h3 className="font-medium text-gray-900 mb-1 truncate">{doc.title}</h3>
-      <div className="flex justify-between items-center text-xs text-gray-500">
-        <span>
-          {new Date(doc.created_at || '').toLocaleDateString()}
-        </span>
-        <span className="px-2 py-1 bg-gray-100 rounded-full">
-          {doc.content.length < 100 ? 'Short' : doc.content.length < 500 ? 'Medium' : 'Long'}
-        </span>
-      </div>
+  <Card 
+    isSelected={isSelected}
+    isHoverable
+    onClick={onClick}
+  >
+    <h3 className="font-medium text-gray-900 mb-1 truncate">{doc.title}</h3>
+    <div className="flex justify-between items-center text-xs text-gray-500">
+      <span>
+        {new Date(doc.created_at || '').toLocaleDateString()}
+      </span>
+      <span className="px-2 py-1 bg-gray-100 rounded-full">
+        {doc.content.length < 100 ? 'Short' : doc.content.length < 500 ? 'Medium' : 'Long'}
+      </span>
     </div>
-  );
+  </Card>
+);
 
 const EmptyState = ({ onCreateNew }: { onCreateNew: () => void }) => (
   <div className="flex flex-col items-center justify-center h-64 p-8 border-2 border-dashed rounded-lg border-gray-300 bg-gray-50">
@@ -290,15 +287,18 @@ export default function DocumentViewer({ onDocumentSelect, session }: DocumentVi
         )}
 
         {documents.length > 0 && (
-        <button 
-            className="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center justify-center"
+        <Button 
+            variant="success"
+            fullWidth
             onClick={createNewDocument}
+            startIcon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+            }
         >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
             Create New Document
-        </button>
+        </Button>
         )}
       </div>
       
