@@ -30,7 +30,12 @@ cd collab-revision-auth/colab_frontend
 npm install
 ```
 
-### 3. Supabase Setup
+### 3. Install Supabase and required packages
+```bash
+npm install @supabase/supabase-js @supabase/auth-helpers-nextjs @supabase/auth-helpers-react
+```
+
+### 4. Supabase Setup
 
 1. Create a new Supabase project at [https://supabase.com](https://supabase.com)
 
