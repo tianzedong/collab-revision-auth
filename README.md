@@ -1,90 +1,148 @@
-# Collaborative Revision Status Application
+# Collaborative Revision Status App
 
-## Overview
+A real-time collaborative application that allows users within the same organization to track and update document revisions. Built with Next.js and Supabase for authentication and real-time database functionality.
 
-Imagine you're building an application where users update the a state of an important document. Each update includes details such as the reviewer's userid. Your task is to build a Next.js application using TypeScript (TSX) that enables users within the same organization to update and view the state in real time. Each user will have a unique `userId` and be associated with an organization via an `orgId` (both stored in cookies or otherwise). **Only users with the same `orgId` should be able to see and modify the state.** Users from different organizations must maintain independent states.
+## Features
 
-Interface is all about the product thinking. 
+- **Secure Authentication**: Email/password authentication with Supabase
+- **Organization-based Access Control**: Users can only see and modify content within their organization
+- **Real-time Synchronization**: Changes made by users in the same organization are instantly visible to others
+- **Responsive Design**: Works across desktop and mobile devices
 
-## Objectives
+## Prerequisites
 
-- **Next.js Application:**  
-  Build your project using Next.js with TypeScript. Develop all components in tsx. If you really can't do it in TSX, let me know: aaryan@getinterface.ai.
+- Node.js (v16 or higher)
+- npm
+- A Supabase account (free tier works fine for development)
 
-- **Shared Revision Status State:**  
-  Implement functionality that allows users to update a state (e.g., with a boolean indicating approval or an integer rating between 0 and 9) or more complex (e.g. text editing like in google docs). When a user updates the state, the change should be synchronized in real time for all users in the same organization, including details of all the historical reviewer's userid and timestamp.
+## Environment Setup
 
-- **Organization-Based Access Control:**  
-  - Each user will have a unique `userId` and an associated `orgId` stored in cookies.
-  - **Only users within the same organization (`orgId`) should see and modify the state.**
-  - Users with different `orgId` values should maintain independent states and not receive cross-organization updates.
+### 1. Clone the repository
 
-- **User Experience & Frontend Design:**  
-  - **Visual Appeal:** Craft a polished, clean, and modern design that invites users to interact with the app.
-  - **Responsive Layout:** Ensure the application works seamlessly across devices and screen sizes.
-  - **Animations & Transitions:** Utilize subtle animations or transitions (e.g., for state changes or notifications) to enrich the user experience.
-  - **Accessibility:** Keep accessibility in mind by using appropriate color contrasts, clear typography, and ensuring keyboard navigability.
+```bash
+git clone (https://github.com/tianzedong/collab-revision-auth)
+cd collab-revision-auth/colab_frontend
+```
 
-## Project Setup
+### 2. Install dependencies
 
-1. **Test the initial project:**
-    - Run:
-    ```bash
-    cd colab_frontend
-    npm install
-    npm run dev
-    ```
-    - Open: http://localhost:3000 to view the initial project.
+```bash
+npm install
+```
 
-2. **Implement Shared Revision Status State:**
-   - Set up a mechanism (e.g., Socket.IO, polling, or another method) to synchronize state changes among users in real time.
-   - When a user updates the revision status, broadcast the updated state (including the reviewer's name, date, and comments) to all users in the same organization.
-   - Ensure that users from different organizations (different `orgId`) have independent status values and do not receive updates across groups.
+### 3. Supabase Setup
 
-3. **Design Considerations:**
-   - **Design Rationale:** Include a brief document or section in your README explaining your design decisions. What influenced your choice of colors, typography, layout, and animations? How do these choices enhance usability?
+1. Create a new Supabase project at [https://supabase.com](https://supabase.com)
 
-## Testing the Application
+2. Get your Supabase URL and anon key from Project Settings > API
 
-- **Development Server:**
-  - The application should run using `npm run dev` (or an equivalent command), allowing evaluators to start the development server and test functionality.
+3. Create a `.env.local` file in the project root(`colab_frontend`) with the following variables:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
 
-- **Simulating Different Users:**
-  - Open the application in multiple browser windows or tabs.
-  - In each browser, set the organization ID and user ID by running the following in the console:
-    ```js
-    document.cookie = "orgId=your-org-id";
-    document.cookie = "userId=your-user-id";
-    ```
-  -  The updated state should reflect in all windows sharing the same `orgId`, while users with a different `orgId` should **not** see these changes.
+4. Set up the database schema by running the following SQL queries in the Supabase SQL Editor:
 
-## Help
+```sql
+-- Create profiles table
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  full_name TEXT,
+  org_id TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-If you want help/guidance, please reach out to me: aaryan@getinterface.ai
+-- Create documents table
+CREATE TABLE documents (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  org_id VARCHAR NOT NULL,
+  title VARCHAR NOT NULL,
+  content TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-## Bonus (Optional)
+-- Create revisions table
+CREATE TABLE revisions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  document_id UUID REFERENCES documents(id),
+  org_id VARCHAR NOT NULL,
+  status VARCHAR NOT NULL,
+  reviewer_id UUID NOT NULL REFERENCES auth.users(id),
+  comments TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-- **Enhanced Visual Feedback:**  
-  - Implement notifications, alerts, or animations that indicate when the state is updated.
-- **Stylistic Improvements:**  
-  - Consider using transitions for smoother UI updates.
-  - Make the app look modern and polished (as per your best judgement).
+-- Enable Row Level Security
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE revisions ENABLE ROW LEVEL SECURITY;
 
-## Evaluation Criteria
+-- Create policy for profiles (allows all operations including select)
+CREATE POLICY "Allow all operations for authenticated users"
+ON profiles
+FOR ALL
+USING (auth.uid() IS NOT NULL);
 
-Your submission will be evaluated based on:
-- **Functionality:**  
-  Does the shared state update work as expected in real time for users within the same organization?
+-- Create policies for documents
+CREATE POLICY "Users can view their organization's documents" 
+ON documents FOR SELECT 
+USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
 
-- **Design Quality:**  
-  Is the application visually appealing, modern, and consistent? Does it provide an excellent user experience?
+CREATE POLICY "Users can insert documents for their organization" 
+ON documents FOR INSERT 
+WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
 
-- **User Experience:**  
-  Are interactions intuitive? Does the app provide clear feedback and handle edge cases gracefully?
+CREATE POLICY "Users can update their organization's documents" 
+ON documents FOR UPDATE
+USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
 
-- **Clever Solutions:**  
-  Are there creative or innovative approaches in both the code and the design? Did you document your design decisions?
+-- Create policies for revisions
+CREATE POLICY "Users can view their organization's revisions" 
+ON revisions FOR SELECT 
+USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
 
-## Good Luck!
+CREATE POLICY "Users can insert revisions for their organization" 
+ON revisions FOR INSERT 
+WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
 
-We're excited to see your implementation that balances technical prowess with elegant frontend design and thoughtful user experience. Happy coding!
+CREATE POLICY "Users can update their organization's revisions" 
+ON revisions FOR UPDATE
+USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+
+-- Set up realtime subscriptions
+BEGIN;
+  DROP PUBLICATION IF EXISTS supabase_realtime;
+  CREATE PUBLICATION supabase_realtime FOR TABLE documents, revisions;
+COMMIT;
+```
+
+5. Enable Email Auth in Supabase Auth settings:
+   - Go to Authentication > Providers
+   - Ensure Email provider is enabled
+   - For development, you may want to disable email confirmations
+
+6. Configure user metadata for signup:
+   - When creating a user account, your application should collect:
+     - full_name
+     - org_id (case sensitive organization identifier)
+   - Save these values in the user's profile table after they sign up
+
+### 4. Start the development server
+
+```bash
+npm run dev
+```
+
+The application should now be running on [http://localhost:3000](http://localhost:3000).
+
+## Testing Multi-User Functionality
+
+To test the organization-based functionality:
+
+1. Open the app in a normal browser window and create an account with org_id "engineering"
+2. Open the app in an incognito window and create another account with the same org_id "engineering"
+3. Open the app in a different browser and create an account with org_id "finance"
+
+Users in the "engineering" organization should see the same documents and revisions, while users in the "finance" organization should see a different set of documents and revisions.
